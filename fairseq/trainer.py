@@ -341,7 +341,7 @@ class Trainer(object):
                     raise e
 
         if is_dummy_batch:
-            sample_size *= 0.  # multiply by 0 to preserve device
+            sample_size = sample_size.float() * 0.  # multiply by 0 to preserve device
         if torch.is_tensor(sample_size):
             sample_size = sample_size.float()
         else:

@@ -21,6 +21,9 @@ from fairseq.data import iterators
 from fairseq.logging import meters, metrics, progress_bar
 from fairseq.trainer import Trainer
 
+import mlflow
+from time import time
+
 
 logging.basicConfig(
     format='%(asctime)s | %(levelname)s | %(name)s | %(message)s',
@@ -30,8 +33,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger('fairseq_cli.train')
 
-
-def main(args, init_distributed=False):
+def sub_main(args, init_distributed=False):
     utils.import_user_module(args)
 
     assert args.max_tokens is not None or args.max_sentences is not None, \
@@ -106,6 +108,11 @@ def main(args, init_distributed=False):
         # save checkpoint
         if epoch_itr.epoch % args.save_interval == 0:
             checkpoint_utils.save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
+            if args.distributed_rank==0:
+                print('Saving checkpoint to ml flow...')
+                start_time = time()
+                mlflow.log_artifact(args.save_dir + '/checkpoint_last.pt')
+                print('Took {} seconds.'.format(time() - start_time))
 
         # early stop
         if should_stop_early(args, valid_losses[0]):
@@ -119,7 +126,18 @@ def main(args, init_distributed=False):
         )
     train_meter.stop()
     logger.info('done training in {:.1f} seconds'.format(train_meter.sum))
-
+    
+def main(args, init_distributed=False):
+    if(args.distributed_rank==0):
+        mlflow.set_experiment('roberta_keyframes')
+        with mlflow.start_run():
+            # pass parameters to mlflow (max 100 paramas at once)
+            params_dict = vars(args)
+            for i in range(0, len(params_dict), 100):
+                mlflow.log_params(dict(list(params_dict.items())[i:i+100]))
+            sub_main(args, init_distributed)
+    else:
+        sub_main(args, init_distributed)
 
 def should_stop_early(args, valid_loss):
     # skip check if no validation was done in the current epoch
@@ -181,6 +199,9 @@ def train(args, trainer, task, epoch_itr):
         num_updates = trainer.get_num_updates()
         if num_updates % args.log_interval == 0:
             stats = get_training_stats(metrics.get_smoothed_values('train_inner'))
+
+            # mlflow.log_metrics(stats)
+
             progress.log(stats, tag='train_inner', step=num_updates)
 
             # reset mid-epoch stats after each log interval
@@ -201,6 +222,9 @@ def train(args, trainer, task, epoch_itr):
 
     # log end-of-epoch stats
     stats = get_training_stats(metrics.get_smoothed_values('train'))
+    # log also for mlflow
+    if args.distributed_rank==0:
+        mlflow.log_metrics({'train_'+k: v for k, v in stats.items()}, step=stats['num_updates'])
     progress.print(stats, tag='train', step=num_updates)
 
     # reset epoch-level meters
@@ -259,6 +283,9 @@ def validate(args, trainer, task, epoch_itr, subsets):
 
         # log validation stats
         stats = get_valid_stats(args, trainer, agg.get_smoothed_values())
+        # log also for mlflow
+        if args.distributed_rank==0:
+            mlflow.log_metrics({'valid_'+k: v for k, v in stats.items()}, step=stats['num_updates'])
         progress.print(stats, tag=subset, step=trainer.get_num_updates())
 
         valid_losses.append(stats[args.best_checkpoint_metric])
