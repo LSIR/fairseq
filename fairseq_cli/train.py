@@ -52,7 +52,6 @@ def sub_main(args, init_distributed=False):
 
     # Print args
     logger.info(args)
-
     # Setup task, e.g., translation, language modeling, etc.
     task = tasks.setup_task(args)
 
@@ -111,7 +110,10 @@ def sub_main(args, init_distributed=False):
             if args.distributed_rank==0:
                 print('Saving checkpoint to ml flow...')
                 start_time = time()
-                mlflow.log_artifact(args.save_dir + '/checkpoint_last.pt')
+                if os.path.exists(args.save_dir + '/checkpoint_best.pt'):
+                    mlflow.log_artifact(args.save_dir + '/checkpoint_best.pt')
+                else:
+                    mlflow.log_artifact(args.save_dir + '/checkpoint_last.pt')
                 print('Took {} seconds.'.format(time() - start_time))
 
         # early stop
@@ -130,7 +132,7 @@ def sub_main(args, init_distributed=False):
 def main(args, init_distributed=False):
     if(args.distributed_rank==0):
         mlflow.set_experiment('roberta_keyframes')
-        with mlflow.start_run():
+        with mlflow.start_run(run_name=args.run_name):
             # pass parameters to mlflow (max 100 paramas at once)
             params_dict = vars(args)
             for i in range(0, len(params_dict), 100):
@@ -315,6 +317,8 @@ def distributed_main(i, args, start_rank=0):
 
 def cli_main(modify_parser=None):
     parser = options.get_training_parser()
+    parser.add_argument('--run-name', default=None,
+                        help='name of run')
     args = options.parse_args_and_arch(parser, modify_parser=modify_parser)
 
     if args.distributed_init_method is None:
