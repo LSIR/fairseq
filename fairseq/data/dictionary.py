@@ -102,6 +102,11 @@ class Dictionary(object):
             self.indices[word] = idx
             self.symbols.append(word)
             self.count.append(n)
+
+            # if not any(char.isdigit() for char in word):
+            #     print(word)
+            #     print(idx)
+
             return idx
 
     def update(self, new_dict):

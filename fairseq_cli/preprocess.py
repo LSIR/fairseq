@@ -143,6 +143,7 @@ def main(args):
 
         ds = indexed_dataset.make_builder(dataset_dest_file(args, output_prefix, lang, "bin"),
                                           impl=args.dataset_impl, vocab_size=len(vocab))
+        
         merge_result(
             Binarizer.binarize(
                 input_file, vocab, lambda t: ds.add_item(t),
@@ -159,7 +160,7 @@ def main(args):
                 os.remove(indexed_dataset.index_file_path(temp_file_path))
 
         ds.finalize(dataset_dest_file(args, output_prefix, lang, "idx"))
-
+        
         logger.info(
             "[{}] {}: {} sents, {} tokens, {:.3}% replaced by {}".format(
                 lang,

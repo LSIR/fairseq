@@ -59,6 +59,7 @@ def sub_main(args, init_distributed=False):
     for valid_sub_split in args.valid_subset.split(','):
         task.load_dataset(valid_sub_split, combine=False, epoch=1)
 
+
     # Build model and criterion
     model = task.build_model(args)
     criterion = task.build_criterion(args)
@@ -110,10 +111,8 @@ def sub_main(args, init_distributed=False):
             if args.distributed_rank==0:
                 print('Saving checkpoint to ml flow...')
                 start_time = time()
-                if os.path.exists(args.save_dir + '/checkpoint_best.pt'):
-                    mlflow.log_artifact(args.save_dir + '/checkpoint_best.pt')
-                else:
-                    mlflow.log_artifact(args.save_dir + '/checkpoint_last.pt')
+                mlflow.log_artifact(args.save_dir + '/checkpoint_best.pt')
+                mlflow.log_artifact(args.save_dir + '/checkpoint_last.pt')
                 print('Took {} seconds.'.format(time() - start_time))
 
         # early stop
@@ -131,8 +130,10 @@ def sub_main(args, init_distributed=False):
     
 def main(args, init_distributed=False):
     if(args.distributed_rank==0):
+        print('logging on to mlflow...')
         mlflow.set_experiment('roberta_keyframes')
         with mlflow.start_run(run_name=args.run_name):
+            print('copying parameters to mlflow.')
             # pass parameters to mlflow (max 100 paramas at once)
             params_dict = vars(args)
             for i in range(0, len(params_dict), 100):
