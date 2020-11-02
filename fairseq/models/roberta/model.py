@@ -27,6 +27,9 @@ from fairseq.modules.transformer_sentence_encoder import init_bert_params
 
 from .hub_interface import RobertaHubInterface
 
+import pickle
+import copy
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +53,23 @@ class RobertaModel(FairseqLanguageModel):
         # We follow BERT's random weight initialization
         self.apply(init_bert_params)
 
+        #load embeddings
+        if args.emb_weights:
+            print('loading pretrained token embs.')
+            with open(args.emb_weights, 'rb') as f:
+                emb_weights = pickle.load(f)
+            emb_weights = 0.02 * (emb_weights - np.mean(emb_weights, axis=0)) / np.std(emb_weights, axis=0) 
+            # QUICK HACK (4 special symbols in beginning and mask at the end)
+            mycopy = copy.copy(self.decoder.sentence_encoder.embed_tokens.weight.data.detach().numpy())
+            mycopy[4:-1] = emb_weights
+            self.decoder.sentence_encoder.embed_tokens.weight.data.copy_(torch.from_numpy(mycopy))
+             # set to zero for padding
+            if self.decoder.sentence_encoder.embed_tokens.padding_idx is not None:
+                self.decoder.sentence_encoder.embed_tokens.weight.data[self.decoder.sentence_encoder.embed_tokens.padding_idx].zero_()
+
         self.classification_heads = nn.ModuleDict()
+
+        
 
     @staticmethod
     def add_args(parser):

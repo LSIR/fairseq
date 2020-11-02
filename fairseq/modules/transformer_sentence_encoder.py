@@ -174,17 +174,17 @@ class TransformerSentenceEncoder(nn.Module):
         if self.apply_bert_init:
             self.apply(init_bert_params)
 
-        if emb_weights_path:
-            print('loading pretrained token embs.')
-            with open(emb_weights_path, 'rb') as f:
-                emb_weights = pickle.load(f)
-            # QUICK HACK (4 special symbols in beginning and mask at the end)
-            mycopy = copy.copy(self.embed_tokens.weight.data.detach().numpy())
-            mycopy[4:-1] = emb_weights
-            self.embed_tokens.weight.data.copy_(torch.from_numpy(mycopy*0))
-             # set to zero for masked elements
-            if self.embed_tokens.padding_idx is not None:
-                self.embed_tokens.weight.data[self.embed_tokens.padding_idx].zero_()
+        # if emb_weights_path:
+        #     print('loading pretrained token embs.')
+        #     with open(emb_weights_path, 'rb') as f:
+        #         emb_weights = pickle.load(f)
+        #     # QUICK HACK (4 special symbols in beginning and mask at the end)
+        #     mycopy = copy.copy(self.embed_tokens.weight.data.detach().numpy())
+        #     mycopy[4:-1] = emb_weights
+        #     self.embed_tokens.weight.data.copy_(torch.from_numpy(mycopy*0))
+        #      # set to zero for masked elements
+        #     if self.embed_tokens.padding_idx is not None:
+        #         self.embed_tokens.weight.data[self.embed_tokens.padding_idx].zero_()
 
         def freeze_module_params(m):
             if m is not None:
@@ -201,7 +201,6 @@ class TransformerSentenceEncoder(nn.Module):
         for layer in range(n_trans_layers_to_freeze):
             freeze_module_params(self.layers[layer])
 
-        print(self.embed_tokens.weight.data)
 
     def forward(
         self,
@@ -212,7 +211,6 @@ class TransformerSentenceEncoder(nn.Module):
         positions: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
-        print(self.embed_tokens.weight.data)
 
         # compute padding mask. This is needed for multi-head attention
         padding_mask = tokens.eq(self.padding_idx)

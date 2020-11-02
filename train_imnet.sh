@@ -1,4 +1,4 @@
-RUN_NAME=10k_wc_frembs_zeros
+RUN_NAME=imnet_10k_centroids
 
 TOTAL_UPDATES=50000    # Total number of training steps
 WARMUP_UPDATES=20000    # Warmup the learning rate over this many updates
@@ -14,7 +14,7 @@ NUM_ATT_HEADS=8
 ENCODER_LAYERS=16
 DROPOUT=0.2
 SAVE_INTERVAL=3
-EMB_WEIGHTS=~/imnet_10k/centroids_ordered.pkl
+EMB_WEIGHTS=~/imnet_10k/centroids.pkl
 
 
 python train.py  ~/imnet_10k_bin \
