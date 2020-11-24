@@ -74,7 +74,7 @@ class RobertaHubInterface(nn.Module):
             return sentences[0]
         return sentences
 
-    def extract_features(self, tokens: torch.LongTensor, counts:torch.LongTensor, return_all_hiddens: bool = False) -> torch.Tensor:
+    def extract_features(self, tokens: torch.LongTensor, counts:torch.LongTensor, embs:torch.LongTensor, return_all_hiddens: bool = False) -> torch.Tensor:
         if tokens.dim() == 1:
             tokens = tokens.unsqueeze(0)
         if tokens.size(-1) > self.model.max_positions():
@@ -86,6 +86,7 @@ class RobertaHubInterface(nn.Module):
         features, extra = self.model(
             tokens.to(device=self.device),
             counts.to(device=self.device),
+            embs.to(device=self.device),
             features_only=True,
             return_all_hiddens=return_all_hiddens,
         )

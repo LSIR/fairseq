@@ -110,6 +110,7 @@ class RobertaModel(FairseqLanguageModel):
         parser.add_argument('--emb-weights', type=str, default=None,
                             help='path to pretrained embedding weights')
         parser.add_argument('--freeze-emb', action='store_true', default=False)
+        parser.add_argument('--input-format', default='embs', choices=['embs', 'tokens', 'both'])
 
     @classmethod
     def build_model(cls, args, task):
@@ -124,11 +125,11 @@ class RobertaModel(FairseqLanguageModel):
         encoder = RobertaEncoder(args, task.source_dictionary)
         return cls(args, encoder)
 
-    def forward(self, src_tokens, src_counts=None, features_only=False, return_all_hiddens=False, classification_head_name=None, **kwargs):        
+    def forward(self, src_tokens, src_counts=None, src_embs=None, features_only=False, return_all_hiddens=False, classification_head_name=None, **kwargs):        
         if classification_head_name is not None:
             features_only = True
 
-        x, extra = self.decoder(src_tokens, src_counts, features_only, return_all_hiddens, **kwargs)
+        x, extra = self.decoder(src_tokens, src_counts, src_embs, features_only, return_all_hiddens, **kwargs)
 
         if classification_head_name is not None:
             x = self.classification_heads[classification_head_name](x)
@@ -305,7 +306,8 @@ class RobertaEncoder(FairseqDecoder):
             apply_bert_init=True,
             activation_fn=args.activation_fn,
             emb_weights_path=args.emb_weights,
-            freeze_embeddings=args.freeze_emb
+            freeze_embeddings=args.freeze_emb,
+            input_format=args.input_format
         )
         self.lm_head = RobertaLMHead(
             embed_dim=args.encoder_embed_dim,
@@ -314,7 +316,7 @@ class RobertaEncoder(FairseqDecoder):
             weight=self.sentence_encoder.embed_tokens.weight,
         )
 
-    def forward(self, src_tokens, src_counts=None, features_only=False, return_all_hiddens=False, masked_tokens=None, **unused):
+    def forward(self, src_tokens, src_counts=None, src_embs=None, features_only=False, return_all_hiddens=False, masked_tokens=None, **unused):
         """
         Args:
             src_tokens (LongTensor): input tokens of shape `(batch, src_len)`
@@ -331,15 +333,16 @@ class RobertaEncoder(FairseqDecoder):
                   is a list of hidden states. Note that the hidden
                   states have shape `(src_len, batch, vocab)`.
         """
-        x, extra = self.extract_features(src_tokens, src_counts, return_all_hiddens=return_all_hiddens)
+        x, extra = self.extract_features(src_tokens, src_counts, src_embs, return_all_hiddens=return_all_hiddens)
         if not features_only:
             x = self.output_layer(x, masked_tokens=masked_tokens)
         return x, extra
 
-    def extract_features(self, src_tokens, src_counts=None, return_all_hiddens=False, **unused):
+    def extract_features(self, src_tokens, src_counts=None, src_embs = None, return_all_hiddens=False, **unused):
         inner_states, _ = self.sentence_encoder(
             src_tokens,
             src_counts,
+            src_embs,
             last_state_only=not return_all_hiddens,
         )
         features = inner_states[-1].transpose(0, 1)  # T x B x C -> B x T x C

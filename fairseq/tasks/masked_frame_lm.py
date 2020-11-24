@@ -20,7 +20,8 @@ from fairseq.data import (
     PrependTokenDataset,
     SortDataset,
     TokenBlockDataset,
-    BaseWrapperDataset
+    BaseWrapperDataset,
+    EmbeddingDataset
 )
 from fairseq.tasks import FairseqTask, register_task
 from fairseq.data.encoders.utils import get_whole_word_mask
@@ -142,9 +143,16 @@ class MaskedFrameLMTask(FairseqTask):
                 count = [int(el) for el in count]
                 counts[i] = [el if el < thresh else thresh for el in count]
                 counts[i] = torch.LongTensor(np.concatenate([[0],counts[i],[0]]))
-        
 
-        # self.counts[split]=np.array(counts)[shuffle]
+        # load embeddings
+        if not self.args.input_format=='tokens':
+            embs = torch.load(split_path + '.features')
+
+
+       # mask counts and embeddings
+        for i, data in enumerate(src_dataset):
+            counts[i] = counts[i] * (data != self.mask_idx)
+            embs[i] = embs[i] * (data != self.mask_idx)[1:-1, None]
 
         self.datasets[split] = SortDataset(
             NestedDictionaryDataset(
@@ -161,6 +169,11 @@ class MaskedFrameLMTask(FairseqTask):
                             pad_idx=0,
                             left_pad=False,
                         ),
+                        'src_embs': EmbeddingDataset(
+                            embs,
+                            pad_idx=0,
+                            left_pad=False,
+                        ) if not self.args.input_format=='tokens' else None,
                         'src_lengths': NumelDataset(src_dataset, reduce=False),
                     },
                     'target': PadDataset(
@@ -181,7 +194,7 @@ class MaskedFrameLMTask(FairseqTask):
 
 
     def build_dataset_for_inference(self, src_tokens, src_lengths, sort=True):
-        print('HEY you didnt add counts here yet \n')
+        print('HEY you didnt add counts or embeddings here yet \n')
         exit()
         src_dataset = PadDataset(
             TokenBlockDataset(

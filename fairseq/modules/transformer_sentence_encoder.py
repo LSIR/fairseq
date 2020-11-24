@@ -102,6 +102,7 @@ class TransformerSentenceEncoder(nn.Module):
         emb_weights_path: str = None,
         count_bins: int = 100,
         use_counts: bool = True,
+        input_format: str = 'embs'
     ) -> None:
 
         super().__init__()
@@ -118,6 +119,7 @@ class TransformerSentenceEncoder(nn.Module):
         self.traceable = traceable
         self.count_bins = count_bins
         self.use_counts = use_counts
+        self.input_format = input_format
 
         self.embed_tokens = nn.Embedding(
             self.vocab_size, self.embedding_dim, self.padding_idx
@@ -206,21 +208,29 @@ class TransformerSentenceEncoder(nn.Module):
         self,
         tokens: torch.Tensor,
         counts: torch.Tensor = None,
+        embs: torch.Tensor = None,
         segment_labels: torch.Tensor = None,
         last_state_only: bool = False,
         positions: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
+        print('{} {} {}'.format(tokens, counts, embs))
 
         # compute padding mask. This is needed for multi-head attention
         padding_mask = tokens.eq(self.padding_idx)
         if not self.traceable and not padding_mask.any():
             padding_mask = None
 
-        x = self.embed_tokens(tokens)
+        if self.input_format=='tokens':
+            x = self.embed_tokens(tokens)
+        else:
+            x = embs
 
         if self.embed_scale is not None:
             x *= self.embed_scale
+
+        if self.input_format=='both':
+            x = x + self.embed_tokens(tokens)
 
         if self.embed_counts is not None:
             x += self.embed_counts(counts)

@@ -1,4 +1,4 @@
-RUN_NAME=imnet_10k_centroids
+RUN_NAME=new_imnet_10k_both
 
 TOTAL_UPDATES=50000    # Total number of training steps
 WARMUP_UPDATES=20000    # Warmup the learning rate over this many updates
@@ -8,16 +8,18 @@ MAX_POSITIONS=512       # Num. positional embeddings (usually same as above)
 MAX_SENTENCES=32       # Number of sequences per batch (batch size)
 UPDATE_FREQ=8          # Increase the batch size x
 
+DATA_DIR=/mnt/tamedia/video_concierge/new_imnet_10k
 EMBEDDING_DIM=512 # RoBerta parameters
 FFN_EMB_DIM=2048
 NUM_ATT_HEADS=8
 ENCODER_LAYERS=16
 DROPOUT=0.2
 SAVE_INTERVAL=3
-EMB_WEIGHTS=~/imnet_10k/centroids.pkl
+INPUT_FORMAT='both'
+#EMB_WEIGHTS=~/imnet_10k/centroids.pkl
 
 
-python train.py  ~/imnet_10k_bin \
+python train.py  $DATA_DIR \
 --run-name $RUN_NAME \
 --task masked_frame_lm --criterion masked_frame_lm \
 --arch roberta_base \
@@ -33,4 +35,5 @@ python train.py  ~/imnet_10k_bin \
 --dropout $DROPOUT --attention-dropout $DROPOUT --activation-dropout $DROPOUT \
 --save-interval $SAVE_INTERVAL \
 --num-workers 0 \
---emb-weights $EMB_WEIGHTS --freeze-emb
+--input-format $INPUT_FORMAT
+# --emb-weights $EMB_WEIGHTS

@@ -61,7 +61,7 @@ class FairseqDataset(torch.utils.data.Dataset, EpochListening):
     def prefetch(self, indices):
         """Prefetch the data required for this epoch."""
         raise NotImplementedError
-
+    
 
 class FairseqIterableDataset(torch.utils.data.IterableDataset, EpochListening):
     """For datasets that need to be read sequentially, usually because the data
